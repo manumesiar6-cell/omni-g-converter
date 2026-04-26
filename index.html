@@ -14,7 +14,7 @@
             --card-bg: #161616;
             --text-main: #ffffff;
             --text-dim: #a0a0a0;
-            --danger-color: #ff4444;
+            --danger-color: #ff0000;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -73,13 +73,13 @@
         .btn-main { background: var(--primary-color); color: #000; }
         .btn-main:hover { background: #00cc6e; transform: scale(1.02); }
         
-        .btn-clear { background: var(--danger-color); color: #fff; font-size: 0.9rem; padding: 12px; }
+        .btn-clear { background: var(--danger-color); color: #fff; font-size: 0.9rem; padding: 12px; display: none; }
         .btn-clear:hover { background: #cc0000; transform: scale(1.02); }
 
         .result-box { background: #000; border: 1px dashed #444; padding: 20px; border-radius: 8px; margin-top: 20px; min-height: 80px; }
         #output { white-space: pre-wrap; color: var(--accent-color); font-family: monospace; font-size: 1.1rem; line-height: 1.5; }
 
-        .copy-btn { margin-top: 15px; background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); width: 100%; }
+        .copy-btn { margin-top: 15px; background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); width: 100%; display: none; }
         .copy-btn:hover { background: var(--accent-color); color: #000; }
         
         .footer-note { text-align: center; margin-top: 25px; font-size: 0.75rem; color: #444; letter-spacing: 2px; }
@@ -100,11 +100,11 @@
         <div class="timezone-block">
             <div class="timezone-title">Elegí tu zona horaria</div>
             <select id="timezoneSelect"></select>
-            <div style="margin-top:8px; font-size:0.85rem;">Hora Actual: <span id="clockDisplay" style="font-weight:bold;">00:00:00</span></div>
+            <div style="margin-top:8px; font-size:0.85rem;">Hora Actual: <span id="clockDisplay" style="font-weight:bold;">--:--:--</span></div>
         </div>
         <div class="button-group">
             <button class="btn btn-main" onclick="processSignals()">Convertir Ahora</button>
-            <button class="btn btn-clear" onclick="clearAll()">Borrar Todo</button>
+            <button id="clearBtn" class="btn btn-clear" onclick="clearAll()">Borrar Todo</button>
         </div>
     </div>
 
@@ -124,6 +124,9 @@
         const zones = moment.tz.names();
         const userZone = moment.tz.guess();
 
+        // Limpiar select antes de llenar para evitar duplicados
+        select.innerHTML = "";
+
         zones.forEach(zone => {
             if (!zone.includes('/') || zone.startsWith('Etc/')) return;
             const opt = document.createElement('option');
@@ -134,8 +137,12 @@
         });
 
         function updateClock() {
-            clock.innerText = moment().tz(select.value).format('HH:mm:ss');
+            const selectedZone = document.getElementById('timezoneSelect').value;
+            if (selectedZone) {
+                clock.innerText = moment().tz(selectedZone).format('HH:mm:ss');
+            }
         }
+        
         select.addEventListener('change', updateClock);
         setInterval(updateClock, 1000);
         updateClock();
@@ -143,4 +150,68 @@
 
     window.onload = initialize;
 
-    function
+    function clearAll() {
+        document.getElementById('rawInput').value = "";
+        document.getElementById('output').innerText = "Esperando señales...";
+        document.getElementById('copyBtn').style.display = 'none';
+        document.getElementById('clearBtn').style.display = 'none';
+    }
+
+    function processSignals() {
+        const input = document.getElementById('rawInput').value;
+        const targetZone = document.getElementById('timezoneSelect').value;
+        const output = document.getElementById('output');
+        const copyBtn = document.getElementById('copyBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        const lines = input.split('\n');
+        let processed = [];
+
+        lines.forEach(line => {
+            if (!line.trim()) return;
+
+            let timeMatch = line.match(/(\d{1,2}:\d{2})/);
+            let assetMatch = line.match(/[A-Z]{3,}(?:-[A-Z]+)?/);
+            let dirMatch = line.match(/CALL|PUT|BUY|SELL/i);
+
+            if (timeMatch && assetMatch && dirMatch) {
+                let asset = assetMatch[0].toUpperCase();
+                let time = timeMatch[0];
+                let dir = dirMatch[0].toUpperCase().replace('BUY', 'CALL').replace('SELL', 'PUT');
+
+                let [h, m] = time.split(':').map(Number);
+                
+                // Conversión de UTC-3 (Argentina) a la zona destino
+                let signalDate = moment.tz({hour: h, minute: m}, "America/Argentina/Buenos_Aires");
+                let converted = signalDate.clone().tz(targetZone);
+                
+                let finalTime = converted.format('HH:mm');
+
+                processed.push(`${asset} - ${finalTime} - ${dir} - 1M`);
+            }
+        });
+
+        if (processed.length > 0) {
+            output.innerText = processed.join('\n');
+            copyBtn.style.display = 'block';
+            clearBtn.style.display = 'block'; // Aparece el botón de borrar al convertir
+        } else {
+            output.innerText = "Error: Asegúrate de incluir par, hora y dirección.";
+            copyBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+        }
+    }
+
+    function copyResult() {
+        const text = document.getElementById('output').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('copyBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "¡Copiado!";
+            setTimeout(() => btn.innerText = originalText, 2000);
+        });
+    }
+</script>
+
+</body>
+</html>
