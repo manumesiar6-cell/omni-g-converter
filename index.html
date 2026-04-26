@@ -14,6 +14,7 @@
             --card-bg: #161616;
             --text-main: #ffffff;
             --text-dim: #a0a0a0;
+            --danger-color: #ff4444;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,9 +67,14 @@
             background: #fff; color: #333; font-weight: bold;
         }
 
-        .btn { padding: 16px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s; text-transform: uppercase; border: none; }
+        .button-group { display: flex; gap: 10px; flex-direction: column; }
+
+        .btn { padding: 16px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s; text-transform: uppercase; border: none; width: 100%; }
         .btn-main { background: var(--primary-color); color: #000; }
         .btn-main:hover { background: #00cc6e; transform: scale(1.02); }
+        
+        .btn-clear { background: var(--danger-color); color: #fff; font-size: 0.9rem; padding: 12px; }
+        .btn-clear:hover { background: #cc0000; transform: scale(1.02); }
 
         .result-box { background: #000; border: 1px dashed #444; padding: 20px; border-radius: 8px; margin-top: 20px; min-height: 80px; }
         #output { white-space: pre-wrap; color: var(--accent-color); font-family: monospace; font-size: 1.1rem; line-height: 1.5; }
@@ -96,7 +102,10 @@
             <select id="timezoneSelect"></select>
             <div style="margin-top:8px; font-size:0.85rem;">Hora Actual: <span id="clockDisplay" style="font-weight:bold;">00:00:00</span></div>
         </div>
-        <button class="btn btn-main" onclick="processSignals()">Convertir Ahora</button>
+        <div class="button-group">
+            <button class="btn btn-main" onclick="processSignals()">Convertir Ahora</button>
+            <button class="btn btn-clear" onclick="clearAll()">Borrar Todo</button>
+        </div>
     </div>
 
     <div class="result-box">
@@ -134,58 +143,4 @@
 
     window.onload = initialize;
 
-    function processSignals() {
-        const input = document.getElementById('rawInput').value;
-        const targetZone = document.getElementById('timezoneSelect').value;
-        const output = document.getElementById('output');
-        const copyBtn = document.getElementById('copyBtn');
-        
-        const lines = input.split('\n');
-        let processed = [];
-
-        lines.forEach(line => {
-            if (!line.trim()) return;
-
-            let timeMatch = line.match(/(\d{1,2}:\d{2})/);
-            let assetMatch = line.match(/[A-Z]{3,}(?:-[A-Z]+)?/);
-            let dirMatch = line.match(/CALL|PUT|BUY|SELL/i);
-
-            if (timeMatch && assetMatch && dirMatch) {
-                let asset = assetMatch[0].toUpperCase();
-                let time = timeMatch[0];
-                let dir = dirMatch[0].toUpperCase().replace('BUY', 'CALL').replace('SELL', 'PUT');
-
-                let [h, m] = time.split(':').map(Number);
-                
-                // Conversión desde UTC-3 (Argentina) al horario seleccionado
-                let signalDate = moment.tz({hour: h, minute: m}, "America/Argentina/Buenos_Aires");
-                let converted = signalDate.clone().tz(targetZone);
-                
-                let finalTime = converted.format('HH:mm');
-
-                // CAMBIO REALIZADO: Ahora imprime 1M en lugar de 5MIN
-                processed.push(`${asset} - ${finalTime} - ${dir} - 1M`);
-            }
-        });
-
-        if (processed.length > 0) {
-            output.innerText = processed.join('\n');
-            copyBtn.style.display = 'block';
-        } else {
-            output.innerText = "Error: Formato no reconocido. Asegúrate de incluir par, hora y dirección.";
-            copyBtn.style.display = 'none';
-        }
-    }
-
-    function copyResult() {
-        const text = document.getElementById('output').innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            const btn = document.getElementById('copyBtn');
-            btn.innerText = "¡Copiado!";
-            setTimeout(() => btn.innerText = "Copiar al Portapapeles", 2000);
-        });
-    }
-</script>
-
-</body>
-</html>
+    function
